@@ -7,6 +7,10 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Experiment runner: each script runs in a fresh directory with `python -I`, an
+  environment holding only `PATH` and the data path, and wall-clock, CPU and memory
+  limits; every run goes to an append-only JSON-lines log with hashes of the script
+  and data, its status, time and metrics.
 - Calibration and slice reports: reliability bins, expected calibration error and
   Brier score; the metric per value of chosen columns, flagging slices of 30 or more
   rows that are more than 0.05 worse than overall.

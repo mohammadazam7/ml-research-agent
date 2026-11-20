@@ -7,6 +7,9 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- Calibration and slice reports: reliability bins, expected calibration error and
+  Brier score; the metric per value of chosen columns, flagging slices of 30 or more
+  rows that are more than 0.05 worse than overall.
 - Baselines scored with the plan's metric: a prior that ignores the features and a
   ridge model on the usable columns, with every fill value and scale taken from the
   training rows. ROC AUC, average precision, macro F1 and MAE are implemented here and

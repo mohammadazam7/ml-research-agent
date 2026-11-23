@@ -4,7 +4,7 @@ Target: v1.0 on **Jan 9, 2027**. Each milestone ends with a pull request, a tagg
 and a changelog entry.
 
 - [x] **M0 (Nov 9): foundation.** Repository, CI, design doc, roadmap.
-- [ ] **M1 (Nov 13 to 24): runner and checks without a language model.** Dataset profiling,
+- [x] **M1 (Nov 13 to 24): runner and checks without a language model.** Dataset profiling,
   evaluation planning (random, grouped and time-based splits), leakage checks, baselines,
   a sandboxed experiment runner with tracking, calibration and slice reports. Fully
   deterministic and tested, so the agent builds on parts that are already trusted.

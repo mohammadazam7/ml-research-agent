@@ -48,6 +48,11 @@ The agent proposes features and models and writes training scripts; the core run
 judges them. Its loop is plan, run, inspect results and checks, revise, within a budget of
 experiments and cost. It can never mark its own result as valid: only the core's checks can.
 
+How that is enforced: a script is given one file in which the target is empty for every
+test row and writes one prediction per test row. The judge keeps the answers and computes
+the metric. Columns flagged by the leakage checks are withheld from the scripts and from
+the baselines; the caller can keep a column it knows is legitimate.
+
 ### Model providers
 
 The same small interface as in data-analyst-agent: hosted APIs and OpenAI-compatible local

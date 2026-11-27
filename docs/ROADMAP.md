@@ -8,7 +8,7 @@ and a changelog entry.
   evaluation planning (random, grouped and time-based splits), leakage checks, baselines,
   a sandboxed experiment runner with tracking, calibration and slice reports. Fully
   deterministic and tested, so the agent builds on parts that are already trusted.
-- [ ] **M2 (Nov 25 to Dec 8): the agent.** Model-provider interface (hosted APIs and any
+- [x] **M2 (Nov 27): the agent.** Model-provider interface (hosted APIs and any
   OpenAI-compatible local endpoint) with a scripted provider for tests, the plan, run,
   inspect and revise loop with a budget, and `mlagent run`.
 - [ ] **M3 (Dec 9 to 22): the benchmark.** Tabular tasks with leakage traps, scoring

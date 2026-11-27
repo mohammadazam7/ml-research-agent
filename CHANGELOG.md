@@ -7,6 +7,15 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- The agent loop and `mlagent run`: a model proposes experiment scripts, the runner
+  executes them and the judge scores them, within a budget of experiments and tokens.
+- The judge: scripts receive a file with the test answers removed and write
+  predictions; the core computes the metric. Columns flagged by the leakage checks are
+  withheld from scripts and baselines unless kept with `--keep`.
+- Model providers: a scripted one for tests and an OpenAI-compatible client configured
+  from `MLAGENT_BASE_URL`, `MLAGENT_MODEL` and `MLAGENT_API_KEY`.
+- The runner can copy named output files out of a run and accept a clean exit without
+  `metrics.json` when the caller scores the run.
 - Experiment runner: each script runs in a fresh directory with `python -I`, an
   environment holding only `PATH` and the data path, and wall-clock, CPU and memory
   limits; every run goes to an append-only JSON-lines log with hashes of the script

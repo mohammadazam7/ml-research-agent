@@ -9,7 +9,9 @@ The agent will write training scripts; this module is where they run. Each run g
 - a record in an append-only JSON-lines log: what ran (hashes of the script and the
   data), how it ended, how long it took and the metrics it reported.
 
-The script reports metrics by writing ``metrics.json`` in its working directory.
+The script reports metrics by writing ``metrics.json`` in its working directory. A
+caller that scores the script itself (the judge does, from the script's predictions) can
+ask for other files to be copied out before the directory is removed.
 
 This is containment against mistakes (a runaway loop, a memory blow-up, a script that
 writes all over the disk), not a security boundary: the script runs as the same user
@@ -27,7 +29,7 @@ import sys
 import tempfile
 import time
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from enum import Enum
@@ -112,12 +114,25 @@ def _read_metrics(path: Path) -> dict[str, float] | None:
     return metrics
 
 
-def run_script(script: Path, data: Path, *, limits: Limits | None = None) -> Run:
+def run_script(
+    script: Path,
+    data: Path,
+    *,
+    limits: Limits | None = None,
+    outputs: Mapping[str, Path] | None = None,
+    require_metrics: bool = True,
+) -> Run:
     """Run ``script`` with a copy of ``data`` next to it and return what happened.
 
     The script finds the copy of the data through the ``MLAGENT_DATA`` environment
-    variable.
+    variable. ``outputs`` maps the name of a file the script may write in its working
+    directory to where a copy should be kept; a file the script did not write is
+    skipped, and a stale file at the destination is removed so an old result is never
+    mistaken for a new one. With ``require_metrics`` off, a script that exits cleanly
+    without ``metrics.json`` still counts as OK.
     """
+    for kept in (outputs or {}).values():
+        kept.unlink(missing_ok=True)
     limits = limits or Limits()
     run_id = uuid.uuid4().hex
     started = datetime.now(UTC).isoformat(timespec="seconds")
@@ -154,10 +169,16 @@ def run_script(script: Path, data: Path, *, limits: Limits | None = None) -> Run
         metrics = _read_metrics(workdir / "metrics.json") if done.returncode == 0 else None
         if done.returncode != 0:
             status = Status.FAILED
-        elif metrics is None:
+        elif metrics is None and require_metrics:
             status = Status.BAD_METRICS
         else:
             status = Status.OK
+        if done.returncode == 0:
+            for name, kept in (outputs or {}).items():
+                written = workdir / name
+                if written.is_file() and not written.is_symlink():
+                    kept.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.copy(written, kept)
         return Run(
             run_id,
             started,

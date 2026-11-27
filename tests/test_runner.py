@@ -109,3 +109,33 @@ def test_the_log_keeps_every_run_and_finds_the_best(tmp_path: Path, data: Path) 
     worst = log.best("roc_auc", higher_is_better=False)
     assert worst is not None and worst.metrics["roc_auc"] == 0.65
     assert len({r.run_id for r in runs}) == 5
+
+
+def test_named_outputs_are_copied_out_and_stale_copies_removed(tmp_path: Path, data: Path) -> None:
+    kept = tmp_path / "kept" / "predictions.json"
+    kept.parent.mkdir()
+    kept.write_text("old")
+    missing = tmp_path / "kept" / "never.json"
+    script = _script(tmp_path, 'open("predictions.json", "w").write("[1, 2]")')
+    run = run_script(
+        script,
+        data,
+        outputs={"predictions.json": kept, "never.json": missing},
+        require_metrics=False,
+    )
+    assert run.status is Status.OK and run.metrics == {}
+    assert kept.read_text() == "[1, 2]"
+    assert not missing.exists()
+
+    failing = _script(tmp_path, 'open("predictions.json", "w").write("[3]"); raise SystemExit(1)')
+    run = run_script(failing, data, outputs={"predictions.json": kept}, require_metrics=False)
+    assert run.status is Status.FAILED
+    assert not kept.exists()  # a failed run leaves no result behind, not even the old one
+
+
+def test_metrics_are_still_required_unless_the_caller_scores_the_run(
+    tmp_path: Path, data: Path
+) -> None:
+    script = _script(tmp_path, "pass")
+    assert run_script(script, data).status is Status.BAD_METRICS
+    assert run_script(script, data, require_metrics=False).status is Status.OK

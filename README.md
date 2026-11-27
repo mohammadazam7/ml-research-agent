@@ -6,9 +6,10 @@ and it profiles the data, sets up a leak-free evaluation, trains a baseline and 
 models, tracks every experiment, checks calibration and fairness slices, and writes a
 model card that reports what it found, including what did not work.
 
-> **Status:** design stage. The design doc and roadmap are written; the experiment runner,
-> the sandbox and the leakage checks are being built now. No results are shown here until
-> the benchmark has produced them.
+> **Status:** milestone 2. The deterministic core (profiling, evaluation plan, leakage
+> checks, baselines, runner, reports) and the agent loop on top of it are built and
+> tested; the benchmark comes next. No model results are shown here until the benchmark
+> has produced them.
 
 ## Why
 
@@ -25,8 +26,9 @@ produces an impressive and useless score. This project puts those checks at the 
 - **Baselines before models.** Every run starts with simple baselines; a model is only
   reported against them.
 - **Calibration and slices.** Probability calibration, and errors by meaningful segments.
-- **Sandboxed code.** Generated training code runs without network access, within time and
-  memory limits, inside its own run directory.
+- **Contained code.** Generated training code runs in its own process and directory,
+  within time and memory limits. That is containment against mistakes, not a security
+  boundary; untrusted code needs a container around it.
 - **Reproducible.** Every experiment is tracked with its code, parameters, data hash, seed
   and metrics, and can be rerun.
 
@@ -47,14 +49,53 @@ flowchart LR
     C --> R[Model card<br/>and report]
 ```
 
-## Planned interface
+## Using it
 
 ```bash
-pip install ml-research-agent        # not published yet
-mlagent run data/orders.parquet --target late --goal "recall at 10% of orders" --model <provider:model>
-mlagent report runs/<run-id>         # the model card and experiment table
-mlagent bench --suite tabular-v1     # score the agent on benchmark tasks
+pip install git+https://github.com/mohammadazam7/ml-research-agent
+export MLAGENT_BASE_URL=http://localhost:11434/v1   # any OpenAI-compatible endpoint
+export MLAGENT_MODEL=<model name>
+export MLAGENT_API_KEY=<key>                        # not needed for a local server
+mlagent run homes.csv --target price --experiments 5
 ```
+
+```text
+mlagent: 600 rows, target price
+split: random; metric: mae (lower is better)
+reason: regression target: mean absolute error, in the target's own units
+reason: no time or entity column found: a seeded random split
+baselines: prior 196981.4833, linear 63431.3275
+attempt 1: failed               -      0.1 s
+attempt 2: scored     196981.4833      0.2 s
+attempt 3: scored      55038.9081      0.1 s
+best: attempt 3, mae 55038.9081, beats the baselines
+stopped: the model had nothing better to try
+tokens: 0 in, 0 out
+files: run
+```
+
+That output is from the test suite's scripted stand-in for a model (three fixed replies:
+a script that crashes, one that predicts the median, one that fits a quadratic) on
+made-up data. It shows what the loop does, not what any language model achieves; real
+models are measured in the benchmark milestone. Exit status is 0 when the best attempt
+beats both baselines, 1 when it does not and 2 when the run could not start.
+
+### Who decides what
+
+The model writes experiment scripts. It does not decide what counts:
+
+- The split, the metric and the baselines come from the core before the model is asked
+  anything.
+- A script gets one file in which the target is empty for every test row. It writes one
+  prediction per test row, and the judge computes the metric against the answers it
+  kept. A score the script reports about itself is ignored.
+- Columns the leakage checks flagged are withheld from that file, and from the
+  baselines too, so the bar stays honest. The assignment says which and why, and
+  `--keep COLUMN` overrides the check for a feature you know is legitimate.
+- Every script, its predictions and a log line with the judge's score are kept in the
+  run directory.
+
+Still planned: `mlagent report` (model card and experiment table) and `mlagent bench`.
 
 ## Benchmark
 

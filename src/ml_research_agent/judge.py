@@ -8,13 +8,16 @@ tune on them or report a number it did not earn.
 
 Columns the leakage checks flagged as giving the answer away (a single feature that
 predicts the target almost perfectly, or a date column with values after the split
-cutoff) are withheld from the file, and the assignment says which and why.
+cutoff) are withheld from the file, and the assignment says which and why. A check can
+be wrong about a feature that is legitimately that strong, so the caller can name
+columns to keep; nothing is withheld silently.
 """
 
 from __future__ import annotations
 
 import json
 import math
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -60,7 +63,14 @@ class Withheld:
 
 class Judge:
     def __init__(
-        self, table: pa.Table, profile: Profile, plan: Plan, split: Split, leakage: Report
+        self,
+        table: pa.Table,
+        profile: Profile,
+        plan: Plan,
+        split: Split,
+        leakage: Report,
+        *,
+        keep: Collection[str] = (),
     ) -> None:
         self.profile = profile
         self.plan = plan
@@ -74,7 +84,11 @@ class Judge:
 
         flagged: dict[str, str] = {}
         for finding in leakage.findings:
-            if finding.column is not None and finding.check in WITHHELD_FOR:
+            if (
+                finding.column is not None
+                and finding.check in WITHHELD_FOR
+                and finding.column not in keep
+            ):
                 flagged.setdefault(finding.column, WITHHELD_FOR[finding.check])
         self.withheld = tuple(Withheld(c, why) for c, why in sorted(flagged.items()))
         self.features = tuple(
